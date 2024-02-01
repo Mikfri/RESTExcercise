@@ -24,7 +24,6 @@ namespace RestExcercise1.Controllers
 
         // GET: api/<BookController>
         [HttpGet]
-        //[EnableCors("MyAllowedOrigin")]
         public IEnumerable<Book> Get()
         {
             return _bookRepository.Get();
@@ -43,7 +42,7 @@ namespace RestExcercise1.Controllers
         /// <returns></returns>
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [HttpGet("filter")]
+        [HttpGet("filter")]     //efterfulgt af ?<property>=<value>>
         public ActionResult<IEnumerable<Book>> Get(
             [FromQuery] int? maxPrice,
             [FromQuery] int? minPrice,
@@ -62,16 +61,23 @@ namespace RestExcercise1.Controllers
 
         // GET(int id): api/<BookController>
         [ProducesResponseType(StatusCodes.Status200OK)]         //Disse statuskoder har noget at gøre med beskeder fra SWAGGER
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         //[EnableCors("MyAllowedOrigin")]
         [HttpGet("{id}")]
         public ActionResult<Book> Get(int id)
         {
-            Book book = _bookRepository.GetByID(id);
-            if (book == null) return NotFound("ERROR: CODE 404\nID: " + id + " NOT FOUND!");
-            return Ok(book);
+            if (id < 0) 
+            {
+                return BadRequest($"CODE 400:\nID MAY NOT BE BELOW 0");
+            }
 
-            //return _bookRepository.GetByID(id);   //GammelSetup uden STATUS (RestExcersise1)
+            Book book = _bookRepository.GetByID(id);
+            if (book == null)
+            {
+                return NotFound($"CODE 404:\nID: {id} NOT FOUND!");
+            }
+            return Ok(book);
         }
 
 
@@ -89,20 +95,18 @@ namespace RestExcercise1.Controllers
 
                 if (request.Result is ConflictObjectResult conflictResult)
                 {
-                    return Conflict($"ERROR: {conflictResult.StatusCode}. {conflictResult.Value}\n");
+                    return Conflict($"{conflictResult.StatusCode} En bog med samme titel eksistere allerede");
                 }
                 if (request.Result is OkObjectResult okResult && okResult.Value is Book book)
                 {
-                    return CreatedAtAction(nameof(Get), new { id = book.Id }, book);   //Angiver handlingens navn som senere genere korrekt URL til ressourcen. 
-                    //return Created($"/api/Book/{book.Id}", book);                     // Her skal vi sætte den direkte URL
-
+                    //return CreatedAtAction(nameof(Get), new { id = book.Id }, book);  //Angiver handlingens navn som senere genere korrekt URL til ressourcen. 
+                    return Created($"/api/Book/{book.Id}", book);                     // Her skal vi sætte den direkte URL
                 }
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
             }
-
             return BadRequest("Ukendt fejl ved oprettelse af bog.");
         }
 
@@ -140,19 +144,18 @@ namespace RestExcercise1.Controllers
             {
                 Book updatedBook = _bookRepository.Update(id, value);
 
-                //if (updatedBook == null)
-                //{
-                //    return NotFound($"ERROR CODE: 404\nID: {id} NOT FOUND!");
-                //}
+                if (updatedBook == null)
+                {
+                    return NotFound($"CODE 404:\nID: {id} NOT FOUND!");
+                }
 
                 return Ok(updatedBook);
             }
             catch (Exception ex)
             {
-                return BadRequest($"ERROR CODE: 400\n{ex.Message}");
+                return BadRequest($"CODE 400:\n{ex.Message}");
             }
         }
-
 
         // DELETE api/<BookController>/
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -168,14 +171,14 @@ namespace RestExcercise1.Controllers
 
                 if (deletedBook == null)
                 {
-                    return NotFound($"ERROR CODE: 404\nID: {id} NOT FOUND!");
+                    return NotFound($"CODE 404:\nID: {id} NOT FOUND!");
                 }
 
                 return Ok(deletedBook);
             }
             catch (Exception ex)
             {
-                return BadRequest($"ERROR CODE: 400\n{ex.Message}");
+                return BadRequest($"CODE 400:\n{ex.Message}");
             }
         }
     }
